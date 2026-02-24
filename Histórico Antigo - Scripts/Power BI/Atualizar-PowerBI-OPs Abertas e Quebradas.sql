@@ -1,0 +1,17 @@
+--Lista de OPs abertas, incluir OPs quebradas e suas filhas
+SELECT DISTINCT A.nops AS 'OP', A.numps AS 'OP_PEDIDO', A.qtds AS 'QTD_OP',
+	CASE
+		WHEN C.dopps = 'FINALIZA��O         ' THEN 'FINALIZADO'
+		WHEN C.dopps = 'FINALIZA S INDUSTRIA' THEN 'CANCELADO'
+		WHEN C.dopps = 'FINALIZA OP S/BARRA ' THEN 'FINALIZA PEDIDO INTERNO'
+		ELSE 'PENDENTE'
+	END AS 'TIPO_FINALIZA��O',
+	CASE
+		WHEN A.nopmaes = 0 THEN A.nops
+		ELSE A.nopmaes
+	END AS 'OP_MAE',
+	A.dataps AS 'DATA_ABERTURA_OP', A.codbarras AS 'CODIGO_BARRAS'
+FROM SigOpPic (NOLOCK) A
+LEFT JOIN SigOpPic (NOLOCK) B ON A.nops = B.nopmaes
+LEFT JOIN (SELECT DISTINCT NOPS, dopps FROM SIGPDMVF (NOLOCK) where dopps in
+				('FINALIZA��O','FINALIZA S INDUSTRIA','FINALIZA OP S/BARRA ')) C ON A.nops = C.NOPS

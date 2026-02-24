@@ -1,0 +1,1 @@
+--Configurações de CFOPs das NFs

@@ -1,0 +1,5 @@
+SELECT PRODUTO.reffs, PRODUTO.cpros, PRODUTO.colecoes, PRODUTO.dpros, PRODUTO.reffs
+	FROM DB_ORF_REL.dbo.SigCdPro AS PRODUTO
+	--WHERE PRODUTO.colecoes = 'ANL'
+		WHERE PRODUTO.colecoes = 'PART'
+ORDER BY PRODUTO.colecoes, PRODUTO.cpros DESC

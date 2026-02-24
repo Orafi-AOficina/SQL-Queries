@@ -1,0 +1,7 @@
+SELECT TOP 1000 *
+FROM DB_ORF_REL.dbo.SigMvHst AS MOVIM
+INNER JOIN DB_ORF_REL.dbo.SigCdPro AS PRODUT
+ON MOVIM.cpros = PRODUT.cpros
+--WHERE MOVIM.empdopnums = 'ORFTRABALHADOS           9099'
+-- WHERE [dopes] = 'NF VENDA'
+ORDER BY [dtalts] DESC
