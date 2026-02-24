@@ -29,10 +29,30 @@ obj/
 *.bak
 *.log
 
-# Ignora pasta .dbeaver e tudo dentro dela
+# DBeaver - SEMPRE ignorar
 .dbeaver/
 
-# OU se quiser ser mais específico (ignora só alguns arquivos comuns)
+# OU se quiser controle granular (para projetos compartilhados):
 .dbeaver/data-source/
 .dbeaver/general_cache/
 .dbeaver/.metadata/
+.dbeaver/.metadata/.plugins/
+.dbeaver/.metadata/.mylyn/
+.dbeaver/.metadata/.plugins/org.eclipse.core.resources/
+.dbeaver/data-source.cache/
+
+# Arquivos de workspace
+.metadata/
+.settings/
+.project
+.classpath
+
+# Logs e cache
+*.log
+*.tmp
+cache/
+temp/
+
+# Senhas e segurança (CRÍTICO)
+*.kdbx
+credentials/
