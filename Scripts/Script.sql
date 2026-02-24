@@ -220,3 +220,8 @@ SELECT DISTINCT RTRIM(A.emps) AS 'EMPRESA', RTRIM(A.empdnps) AS 'CHAVE_OPERACAO'
 			LEFT JOIN SigCdPro F (NOLOCK) ON B.codpds = F.cpros
 			LEFT JOIN SIGCDCLI G (NOLOCK) ON A.contads = G.iclis
 		WHERE A.datas >= '01-01-2023'
+
+
+
+
+SELECT * FROM SigCdPro (NOLOCK)
