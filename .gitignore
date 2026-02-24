@@ -29,3 +29,10 @@ obj/
 *.bak
 *.log
 
+# Ignora pasta .dbeaver e tudo dentro dela
+.dbeaver/
+
+# OU se quiser ser mais específico (ignora só alguns arquivos comuns)
+.dbeaver/data-source/
+.dbeaver/general_cache/
+.dbeaver/.metadata/
