@@ -1,227 +1,85 @@
-SELECT DISTINCT RTRIM(A.emps) AS 'EMPRESA', RTRIM(A.empdnps) AS 'CHAVE_OPERACAO', A.numps AS 'NUM_OPER',
-			CASE 
-					WHEN A.dopps = 'TRABALHADOS S/ OP' THEN  FORMAT(A.datas, 'yyyy-MM-dd HH:mm')
-					WHEN B.datas > '01-01-2000' THEN FORMAT(B.datas, 'yyyy-MM-dd HH:mm')
-					ELSE FORMAT(A.datas, 'yyyy-MM-dd HH:mm')
-			END AS 'DATA_HORA',
-			CASE
-					WHEN A.dopps = 'TRABALHADOS S/ OP' THEN  FORMAT(A.datars, 'yyyy-MM-dd HH:mm')
-					WHEN B.datas > '01-01-2000' THEN FORMAT(B.datars, 'yyyy-MM-dd HH:mm')
-					ELSE FORMAT(A.datars, 'yyyy-MM-dd HH:mm')
-			END AS 'DATA_HORA_INICIO_OPERACAO',
-			RTRIM(A.dopps) AS 'TIPO_OPERACAO',
-			CASE
-				WHEN C.tpops = '' THEN RTRIM(A.dopps)
-				WHEN C.tpops IS NULL THEN RTRIM(A.dopps)
-				WHEN A.dopps = 'DIVISAO DE OP' THEN RTRIM(A.dopps)
-				ELSE RTRIM(C.tpops)
-			END AS 'OPERACAO',
-			CASE 
-				WHEN A.dopps = 'TRABALHADOS S/ OP' THEN 0
-				WHEN A.dopps IN ('MUDA SETOR C ESTOQ', 'INDUSTRIALIZAÇÃO', 'FINALIZA S INDUSTRIA') THEN B.nops
-				--WHEN ISNULL(C.nops, 0) = 0 THEN B.nops
-				ELSE ISNULL(C.nops, 0) --C.nenvs
-			END AS 'OP',
-			CASE 
-				WHEN A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(C.nops, 0) = 0 THEN 0
-				ELSE (SELECT MIN(a.qtds) FROM SigPdMvf (NOLOCK) a WHERE B.nops = a.nops AND a.datars <= B.datars AND a.dopps IN ('DIVISAO DE OP', 'INDUSTRIALIZAÇÃO'))
-			END AS 'QTD_OP',
-			CASE WHEN ISNULL(B.nops, 0) = 0 THEN '' ELSE RTRIM(B.codpds) END AS 'COD_PRODUTO',-- D.codbarras AS 'FINALIZACAO',
-			RTRIM(A.grupoos) AS 'GRP_CONTA_ORI', RTRIM(A.contaos) AS 'COD_CONTA_ORI', RTRIM(E.rclis) AS 'NOME_CONTA_ORI',
-			RTRIM(A.grupods) AS 'GRP_CONTA_DEST', RTRIM(A.contads) AS 'COD_CONTA_DEST', RTRIM(G.rclis) AS 'NOME_CONTA_DEST',
-			A.totpesos 'PESO_TOTAL',
-			CONCAT((CASE 
-						WHEN A.dopps = 'TRABALHADOS S/ OP' THEN CASE WHEN LEN(RTRIM(A.docus)) = 8 THEN CONCAT(CAST(RTRIM(A.docus) AS INT), '_') END
-						ELSE ''
-					END),
-			CAST(A.obss AS varchar(max)))  AS 'OBSERVAÇÃO',
-			CASE WHEN A.emps = 'ORA' AND A.datas <= '01-09-2025' AND A.numbals > 1000 THEN 'ORF' ELSE RTRIM(A.emps) END + '_' + CAST(A.numbals AS varchar) AS 'BALANÇO',
-			CASE WHEN A.emps = 'ORA' AND A.datas <= '01-09-2025' AND A.numbalds > 1000  THEN 'ORF' ELSE RTRIM(A.emps) END + '_' + CAST(A.numbalds AS varchar) AS 'BALANÇO_DEST', A.usuars AS 'USUARIO',
-			CASE 
-				WHEN A.dopps = 'TRABALHADOS S/ OP' THEN  REPLACE(A.empdnps, ' ', '')
-				ELSE REPLACE(A.empdnps, ' ', '')
-			END AS 'CHAVE_FINALIZACAO',
-			CASE
-				WHEN (SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND K.dopps LIKE 'FINALIZA%' AND K.cidchaves = B.cidchaves) = 1 THEN 'VERDADEIRO'
-				WHEN (SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND K.dopps LIKE 'FINALIZA%' AND K.cidchaves < B.cidchaves) > 0 THEN 'FALSO'
-				WHEN (SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND K.cidchaves >= B.cidchaves) = 1 THEN 'VERDADEIRO'
-				ELSE 'FALSO'
-			END AS 'ULT_MOVIMENTACAO',
-			CASE WHEN A.dopps = 'INDUSTRIALIZAÇÃO' OR A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(B.nops, 0) = 0 THEN 1
-					ELSE
-						(SELECT DISTINCT CASE WHEN A.dopps = 'DIVISAO DE OP' THEN COUNT(M.nops) ELSE COUNT(M.nops) END
-							FROM SigPdMvf (NOLOCK) M
-								WHERE M.nops = B.nops AND M.cidchaves <= B.cidchaves) + 1 -
-						(SELECT DISTINCT CASE WHEN A.dopps = 'DIVISAO DE OP' THEN 1 ELSE COUNT(M.nops) END
-							FROM SigPdMvf (NOLOCK) M
-								WHERE M.nops = B.nops AND M.cidchaves = B.cidchaves) + 
-						(SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND A.dopps LIKE 'FINALIZA%' AND K.cidchaves > B.cidchaves) - 
-						(SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND K.dopps LIKE 'FINALIZA%' AND K.cidchaves < B.cidchaves) END AS 'SEQ_MOVIMENTACAO',
-			CASE WHEN A.dopps = 'INDUSTRIALIZAÇÃO' OR A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(B.nops, 0) = 0 THEN 0
-					ELSE
-						(SELECT DISTINCT CASE WHEN A.dopps = 'DIVISAO DE OP' THEN COUNT(M.nops) ELSE COUNT(M.nops) END
-							FROM SigPdMvf (NOLOCK) M
-								WHERE M.nops = B.nops AND M.cidchaves <= B.cidchaves) -
-						(SELECT DISTINCT CASE WHEN A.dopps = 'DIVISAO DE OP' THEN 1 ELSE COUNT(M.nops) END
-								FROM SigPdMvf (NOLOCK) M
-									WHERE M.nops = B.nops AND M.cidchaves = B.cidchaves) + 
-						(SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND A.dopps LIKE 'FINALIZA%' AND K.cidchaves > B.cidchaves) - 
-						(SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND K.dopps LIKE 'FINALIZA%' AND K.cidchaves < B.cidchaves)  END AS 'SEQ_MOVIMENTACAO_ANTERIOR',
-			CASE WHEN ISNULL(B.nops, 0) = 0 THEN 0 ELSE B.cidchaves END AS 'INDEX'
-		FROM SigCdNec (NOLOCK) A
-			LEFT JOIN (SELECT DISTINCT aa.empdnps AS 'ANTIGA', REPLACE(aa.empdnps, 'ORF', 'ORA') AS 'NOVA' From SigCdNei (NOLOCK) aa
-										LEFT JOIN SigCdNec (NOLOCK) bb ON aa.empdnps = bb.empdnps WHERE bb.emps IS NULL) D ON A.empdnps = D.NOVA
-			LEFT JOIN (SELECT DISTINCT tpops, dopps, emps, nops, numps, empdnps FROM SigCdNei (NOLOCK)) C ON A.empdnps = C.empdnps OR C.empdnps = D.ANTIGA
-			LEFT JOIN (SELECT DISTINCT nops, codpds, empdnps, MIN(datas) as 'datas', MIN(CAST(cidchaves AS BIGINT)) as 'cidchaves', MIN(datars) as 'datars', dopps
-								FROM SigPdMvf (NOLOCK) 
-							GROUP BY nops, codpds, empdnps, dopps) B ON (C.empdnps = B.empdnps AND C.nops = B.nops) OR (ISNULL(C.nops, -1) = -1 AND (A.empdnps = B.empdnps OR D.ANTIGA = B.empdnps))
-			LEFT JOIN SIGCDCLI E (NOLOCK) ON A.contaos = E.iclis
-			LEFT JOIN SigCdPro F (NOLOCK) ON B.codpds = F.cpros
-			LEFT JOIN SIGCDCLI G (NOLOCK) ON A.contads = G.iclis
-		WHERE A.datas >= '01-01-2023'
-		
-		
-		
-		
-		
-A coluna 'CHAVE_fMovimentacao' na Tabela 'fMovimentacao' contém um valor duplicado 'ORFMUDASETORCESTOQ30070_MUDA SETOR C ESTOQ_0' e isso não é permitido para colunas de um lado de uma relação muitos para um ou para colunas que são usadas como a chave primária de uma tabela.
-
-
-2420
-2434
-30070
-232220
-
-
-SELECT emps, MIN(numps), dopps FROM SigPdMvf WHERE emps = 'ORF' AND datars > '01-01-2023' GROUP BY emps, dopps
-
-
-
-SELECT DISTINCT A.tpops, A.dopps, A.emps, A.nops, A.numps, A.empdnps, B.datars FROM SigCdNei (NOLOCK) A LEFT JOIN SigPdMvf B (NOLOCK) ON A.empdnps = B.empdnps
-							WHERE B.datars > '01-01-2022' and A.numps = 232220 --A.emps = 'ORF'--(nops >= 66000001 OR (nops = 0 OR AND NOT (emps = 'ORF' and numps < 1500)
-							
-							
-							
-							
-							
-(SELECT DISTINCT A.empdnps AS 'ANTIGO', REPLACE(A.empdnps, 'ORF', 'ORA') AS 'NOVA' From SigCdNei A LEFT JOIN SigCdNec B ON A.empdnps = B.empdnps WHERE B.emps IS NULL)
+-- Saídas de Produção, são operações que enviam insumos do estoque de materia prima para os setores necessários na produção
+SELECT RTRIM(A.emps) AS 'EMP', MAX(A.datars) AS 'DATA-HORA', RTRIM(A.dopes) AS 'OPERARAÇAO', MAX(A.mascnum+0) AS 'NUM_OP', RTRIM(A.grupoos) AS 'GRUPO_ORG', RTRIM(A.contaos) AS 'CONTA_ORG', RTRIM(C.rclis) AS 'NOME_ORG',
+	RTRIM(A.grupods) AS 'GRUPO_DEST', RTRIM(A.contads) AS 'CONTA_DEST', RTRIM(D.rclis) AS 'NOME_DEST', E.cgrus, E.mercs, RTRIM(B.cpros) AS 'COD_INS',
+	RTRIM(B.dpros) AS 'DESC_INS', SUM(B.qtds) AS 'QTD', RTRIM(B.cunis) AS 'UNIT_QTD', SUM(B.pesos) AS 'QTD2', RTRIM(B.cunips) AS 'UNIT_QTD2'
+FROM SigMvCab (NOLOCK) A
+		INNER JOIN SigMvItn (NOLOCK) B ON B.empdopnums = A.empdopnums
+		INNER JOIN SIGCDCLI (NOLOCK) C ON A.contaos = C.iclis
+		INNER JOIN SIGCDCLI (NOLOCK) D ON A.contads = D.iclis
+		INNER JOIN SigCdPro (NOLOCK) E ON B.cpros = E.cpros
+	WHERE (A.dopes = 'NF COMPRA MP') AND A.datas >= '2021-01-01' AND E.cgrus IN ('IMT', 'IAU')
+GROUP BY A.emps, A.dopes, A.grupoos, A.contaos, C.rclis, A.grupods, A.contads, D.rclis, E.cgrus, E.mercs, B.cpros, B.dpros, B.cunis, B.cunips
 
 
 
 
 
 
+SELECT A.datars AS 'DATA-HORA', A.datas AS 'DATA', A.dopes AS 'OPERAÇAO', A.mascnum+0 AS 'NUM_OP', A.grupoos AS 'GRUPO_ORG', A.contaos AS 'CONTA_ORG', C.rclis AS 'NOME_ORG',
+	A.grupods AS 'GRUPO_DEST', A.contads AS 'CONTA_DEST', D.rclis AS 'NOME_DEST', B.cpros AS 'COD_INS',
+	B.dpros AS 'DESC_INS', B.qtds AS 'QTD', B.cunis AS 'UNIT_QTD', B.pesos AS 'QTD2', B.cunips AS 'UNIT_QTD2',
+	A.usuars AS 'RESPONSAVEL', Convert(varchar(max),A.obses) AS 'OBS SAIDA', Convert(varchar(max),B.obs) AS 'OBS ITEM',
+	CASE WHEN LEFT(F.OP_SEMITRATADA, 1) IN ('1', '2', '3', '4', '5') THEN F.OP_SEMITRATADA ELSE LEFT(F.OP_SEMITRATADA, 4) END AS 'OP',
+	CASE WHEN LEFT(G.OP_SEMITRATADA, 1) IN ('1', '2', '3', '4', '5') THEN G.OP_SEMITRATADA ELSE LEFT(G.OP_SEMITRATADA, 4) END AS 'OP_ITEM',
+	B.citens AS 'ORDENADOR', A.empdopnums AS 'CHAVE_OPERACAO', CONCAT(B.citens, A.empdopnums) AS 'CHAVE_ITEM',
+	CASE WHEN B.chksubn = 1 THEN 'VERDADEIRO' ELSE 'FALSO' END AS 'BAIXA'
+FROM SigMvCab (NOLOCK) A
+		INNER JOIN SigMvItn (NOLOCK) B ON B.empdopnums = A.empdopnums
+		INNER JOIN SIGCDCLI (NOLOCK) C ON A.contaos = C.iclis
+		INNER JOIN SIGCDCLI (NOLOCK) D ON A.contads = D.iclis
+		LEFT JOIN SigCdPro (NOLOCK) E ON B.cpros = E.cpros
+		LEFT JOIN (SELECT aa.empdopnums,
+						CASE 
+        WHEN PATINDEX('%[0-9]%', aa.obses) > 0 THEN
+            CASE 
+                WHEN SUBSTRING(aa.obses, PATINDEX('%[0-9]%', aa.obses), 1) BETWEEN '1' AND '3' THEN
+                    SUBSTRING(aa.obses, PATINDEX('%[0-9]%', aa.obses), 5)
+                WHEN SUBSTRING(aa.obses, PATINDEX('%[0-9]%', aa.obses), 1) BETWEEN '4' AND '9' THEN
+                    SUBSTRING(aa.obses, PATINDEX('%[0-9]%', aa.obses), 4)
+                ELSE NULL
+            END
+        ELSE NULL
+    END AS  'OP_SEMITRATADA' FROM SigMvCab (NOLOCK) aa) F ON F.empdopnums = A.empdopnums
+		LEFT JOIN (SELECT bb.empdopnums, bb.citens,
+						CASE 
+        WHEN PATINDEX('%[0-9]%', bb.obs) > 0 THEN
+            CASE 
+                WHEN SUBSTRING(bb.obs, PATINDEX('%[0-9]%', bb.obs), 1) BETWEEN '1' AND '3' THEN
+                    SUBSTRING(bb.obs, PATINDEX('%[0-9]%', bb.obs), 9)
+                WHEN SUBSTRING(bb.obs, PATINDEX('%[0-9]%', bb.obs), 1) BETWEEN '4' AND '9' THEN
+                    SUBSTRING(bb.obs, PATINDEX('%[0-9]%', bb.obs), 8)
+                ELSE NULL
+            END
+        ELSE NULL
+    END AS  'OP_SEMITRATADA' FROM SigMvItn (NOLOCK) bb) G ON G.empdopnums = B.empdopnums AND G.citens = B.citens
+	WHERE A.dopes IN ('SAIDA PRODUCAO', 'SAIDA PRODUCAO TOTAL', 'SAIDA PARA CONSERTO', 'SAIDA DE RESPOSICAO')
+                                 AND A.datas >= '2024-01-01'
+                                 AND E.cgrus <> 'IAU'
+                                 AND A.emps IN ('ORF', 'ORA')
+	ORDER BY A.datars DESC, A.mascnum, B.citens
+	
+	
+	
+	
 
-SELECT DISTINCT RTRIM(A.emps) AS 'EMPRESA', RTRIM(A.empdnps) AS 'CHAVE_OPERACAO', A.numps AS 'NUM_OPER',
-			CASE 
-					WHEN A.dopps = 'TRABALHADOS S/ OP' THEN  FORMAT(A.datas, 'yyyy-MM-dd HH:mm')
-					WHEN B.datas > '01-01-2000' THEN FORMAT(B.datas, 'yyyy-MM-dd HH:mm')
-					ELSE FORMAT(A.datas, 'yyyy-MM-dd HH:mm')
-			END AS 'DATA_HORA',
-			CASE
-					WHEN A.dopps = 'TRABALHADOS S/ OP' THEN  FORMAT(A.datars, 'yyyy-MM-dd HH:mm')
-					WHEN B.datas > '01-01-2000' THEN FORMAT(B.datars, 'yyyy-MM-dd HH:mm')
-					ELSE FORMAT(A.datars, 'yyyy-MM-dd HH:mm')
-			END AS 'DATA_HORA_INICIO_OPERACAO',
-			RTRIM(A.dopps) AS 'TIPO_OPERACAO',
-			CASE
-				WHEN C.tpops = '' THEN RTRIM(A.dopps)
-				WHEN C.tpops IS NULL THEN RTRIM(A.dopps)
-				WHEN A.dopps = 'DIVISAO DE OP' THEN RTRIM(A.dopps)
-				ELSE RTRIM(C.tpops)
-			END AS 'OPERACAO',
-			CASE 
-				WHEN A.dopps = 'TRABALHADOS S/ OP' THEN 0
-				WHEN A.dopps IN ('MUDA SETOR C ESTOQ', 'INDUSTRIALIZAÇÃO', 'FINALIZA S INDUSTRIA') THEN B.nops
-				--WHEN ISNULL(C.nops, 0) = 0 THEN B.nops
-				ELSE ISNULL(C.nops, 0) --C.nenvs
-			END AS 'OP',
-			CASE 
-				WHEN A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(C.nops, 0) = 0 THEN 0
-				ELSE (SELECT MIN(a.qtds) FROM SigPdMvf (NOLOCK) a WHERE B.nops = a.nops AND a.datars <= B.datars AND a.dopps IN ('DIVISAO DE OP', 'INDUSTRIALIZAÇÃO'))
-			END AS 'QTD_OP',
-			CASE WHEN ISNULL(B.nops, 0) = 0 THEN '' ELSE RTRIM(B.codpds) END AS 'COD_PRODUTO',-- D.codbarras AS 'FINALIZACAO',
-			RTRIM(A.grupoos) AS 'GRP_CONTA_ORI', RTRIM(A.contaos) AS 'COD_CONTA_ORI', RTRIM(E.rclis) AS 'NOME_CONTA_ORI',
-			RTRIM(A.grupods) AS 'GRP_CONTA_DEST', RTRIM(A.contads) AS 'COD_CONTA_DEST', RTRIM(G.rclis) AS 'NOME_CONTA_DEST',
-			A.totpesos 'PESO_TOTAL',
-			CONCAT((CASE 
-						WHEN A.dopps = 'TRABALHADOS S/ OP' THEN CASE WHEN LEN(RTRIM(A.docus)) = 8 THEN CONCAT(CAST(RTRIM(A.docus) AS INT), '_') END
-						ELSE ''
-					END),
-			CAST(A.obss AS varchar(max)))  AS 'OBSERVAÇÃO',
-			CASE WHEN A.emps = 'ORA' AND A.datas <= '01-09-2025' AND A.numbals > 1000 THEN 'ORF' ELSE RTRIM(A.emps) END + '_' + CAST(A.numbals AS varchar) AS 'BALANÇO',
-			CASE WHEN A.emps = 'ORA' AND A.datas <= '01-09-2025' AND A.numbalds > 1000  THEN 'ORF' ELSE RTRIM(A.emps) END + '_' + CAST(A.numbalds AS varchar) AS 'BALANÇO_DEST', A.usuars AS 'USUARIO',
-			CASE 
-				WHEN A.dopps = 'TRABALHADOS S/ OP' THEN  REPLACE(A.empdnps, ' ', '')
-				ELSE REPLACE(A.empdnps, ' ', '')
-			END AS 'CHAVE_FINALIZACAO',
-			CASE
-				WHEN (SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND K.dopps LIKE 'FINALIZA%' AND K.cidchaves = B.cidchaves) = 1 THEN 'VERDADEIRO'
-				WHEN (SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND K.dopps LIKE 'FINALIZA%' AND K.cidchaves < B.cidchaves) > 0 THEN 'FALSO'
-				WHEN (SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND K.cidchaves >= B.cidchaves) = 1 THEN 'VERDADEIRO'
-				ELSE 'FALSO'
-			END AS 'ULT_MOVIMENTACAO',
-			CASE WHEN A.dopps = 'INDUSTRIALIZAÇÃO' OR A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(B.nops, 0) = 0 THEN 1
-					ELSE
-						(SELECT DISTINCT CASE WHEN A.dopps = 'DIVISAO DE OP' THEN COUNT(M.nops) ELSE COUNT(M.nops) END
-							FROM SigPdMvf (NOLOCK) M
-								WHERE M.nops = B.nops AND M.cidchaves <= B.cidchaves) + 1 -
-						(SELECT DISTINCT CASE WHEN A.dopps = 'DIVISAO DE OP' THEN 1 ELSE COUNT(M.nops) END
-							FROM SigPdMvf (NOLOCK) M
-								WHERE M.nops = B.nops AND M.cidchaves = B.cidchaves) + 
-						(SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND A.dopps LIKE 'FINALIZA%' AND K.cidchaves > B.cidchaves) - 
-						(SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND K.dopps LIKE 'FINALIZA%' AND K.cidchaves < B.cidchaves) END AS 'SEQ_MOVIMENTACAO',
-			CASE WHEN A.dopps = 'INDUSTRIALIZAÇÃO' OR A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(B.nops, 0) = 0 THEN 0
-					ELSE
-						(SELECT DISTINCT CASE WHEN A.dopps = 'DIVISAO DE OP' THEN COUNT(M.nops) ELSE COUNT(M.nops) END
-							FROM SigPdMvf (NOLOCK) M
-								WHERE M.nops = B.nops AND M.cidchaves <= B.cidchaves) -
-						(SELECT DISTINCT CASE WHEN A.dopps = 'DIVISAO DE OP' THEN 1 ELSE COUNT(M.nops) END
-								FROM SigPdMvf (NOLOCK) M
-									WHERE M.nops = B.nops AND M.cidchaves = B.cidchaves) + 
-						(SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND A.dopps LIKE 'FINALIZA%' AND K.cidchaves > B.cidchaves) - 
-						(SELECT COUNT(K.datas)
-								FROM SigPdMvf (NOLOCK) K
-									WHERE K.nops = B.nops AND K.dopps LIKE 'FINALIZA%' AND K.cidchaves < B.cidchaves)  END AS 'SEQ_MOVIMENTACAO_ANTERIOR',
-			CASE WHEN ISNULL(B.nops, 0) = 0 THEN 0 ELSE B.cidchaves END AS 'INDEX'
-		FROM SigCdNec (NOLOCK) A
-			LEFT JOIN (SELECT DISTINCT aa.tpops, aa.dopps, aa.emps, aa.nops, aa.numps, aa.empdnps FROM SigCdNei (NOLOCK) aa LEFT JOIN SigPdMvf bb (NOLOCK) ON aa.empdnps = bb.empdnps
-							WHERE bb.datars > '01-01-2022') C ON A.dopps = C.dopps AND A.numps = C.numps AND LEFT(A.emps,2) = LEFT(C.emps, 2) --A.empdnps = C.empdnps OR REPLACE(C.empdnps, 'ORF', 'ORA') = A.empdnps
-			LEFT JOIN (SELECT DISTINCT nops, codpds, empdnps, MIN(datas) as 'datas', MIN(CAST(cidchaves AS BIGINT)) as 'cidchaves', MIN(datars) as 'datars', dopps
-							FROM SigPdMvf (NOLOCK) WHERE datas >= '01-01-2022'
-							GROUP BY nops, codpds, empdnps, dopps) B ON (C.empdnps = B.empdnps AND C.nops = B.nops) OR (ISNULL(C.nops, 0) = 0 AND A.empdnps = B.empdnps)
-			LEFT JOIN SIGCDCLI E (NOLOCK) ON A.contaos = E.iclis
-			LEFT JOIN SigCdPro F (NOLOCK) ON B.codpds = F.cpros
-			LEFT JOIN SIGCDCLI G (NOLOCK) ON A.contads = G.iclis
-		WHERE A.datas >= '01-01-2023'
-
-
-
-
-SELECT * FROM SigCdPro (NOLOCK)
+	
+	
+	
+	
+	
+	
+	
+	
+--Pedidos
+SELECT A.emps AS 'EMP', F.iclis AS 'COD_CLIENTE', RTRIM(F.rclis) AS 'CLIENTE',
+	RTRIM(A.dopes) AS 'TIPO PEDIDO', A.datas AS 'DATA_ENTRADA', A.prazoents AS 'PRAZO', RTRIM(A.mascnum) AS 'PEDIDO',
+	A.nops AS 'OP_PREFIXO',REPLACE(A.mascnum, ' ', '')+0 AS 'PEDIDO_NUMERO', COUNT(B.nops) AS 'NUM_ITENS'
+FROM SigMvCab (NOLOCK) A
+		LEFT JOIN SIGCDCLI (NOLOCK) F ON A.contads = F.iclis
+		LEFT JOIN SigOpPic (NOLOCK) B ON A.empdopnums = B.empdopnums AND B.nopmaes= 0
+WHERE A.datas > '2024-01-01'
+	AND A.dopes IN ('PEDIDO DE ENCOMENDA', 'PEDIDO DE FABRICA', 'PEDIDO DE PILOTO',
+				'PEDIDO FABRICA','PEDIDO ENCOMENDA','PEDIDO PILOTO', 'PED ENCOMENDA POF', 'PED FABRICA POF')
+	AND A.emps IN('ORF', 'ORA')
+GROUP BY A.emps, F.iclis, F.rclis, A.dopes, A.datas, A.prazoents, A.mascnum, A.nops, A.mascnum
+ORDER BY A.datas DESC

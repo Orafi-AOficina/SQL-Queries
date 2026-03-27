@@ -1,0 +1,1 @@
+SELECT * FROM SIGCDPRO WHERE cpros IN ('ped002279', 'ped000517.', 'ped000008', 'ped000006', 'ped000011', 'ped000106', 'ped002856', 'ped002246', 'ped003699')

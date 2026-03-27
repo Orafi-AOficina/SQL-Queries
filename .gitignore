@@ -56,3 +56,6 @@ temp/
 # Senhas e segurança (CRÍTICO)
 *.kdbx
 credentials/
+.vscode/mssql_settings.json
+.env
+.env.local

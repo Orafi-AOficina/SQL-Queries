@@ -1,42 +1,42 @@
-select CASE WHEN a.emps = 'ORF' THEN 'ORA' ELSE a.emps end as Empresa, a.dopes as Operação, a.numes as Num_Conserto, a.datas as Data_Entrada, a.prazoents as Prazo, RTRIM(K.iclis) AS 'COD_CLIENTE', RTRIM(K.rclis) AS 'CLIENTE', A.obses AS 'OBS_PEDIDO',
-			a.dtbaixas as Data_Baixa, left(a.ultgrvs,26) as Baixa, b.cpros as Produto, j.dpros, j.reffs as Ref_Cliente, b.qtds as Qtds, c.codtams as Tamanho, (B.obs) AS Obs_Item,
-			CASE WHEN b.chksubn = 0 THEN 'FALSO' ELSE 'VERDADEIRO' END AS 'BAIXA_ITEM',
-			CASE WHEN a.chksubn = 0 THEN 'FALSO' ELSE 'VERDADEIRO' END AS 'BAIXA_PEDIDO', A.usuars as USUARIO, b.pesos
-from sigmvcab a with(nolock)
-inner join sigmvitn b with(nolock) on a.empdopnums=b.empdopnums
-left join sigmvits c with(nolock) on a.empdopnums=c.empdopnums and b.citens=c.citens
-left join sigcdope d with(nolock) on a.dopes=d.dopes
-left join sigmvpec e with(nolock) on a.emps=e.empsubns 
-								and right(e.codigos,6) = replicate('0',6-len(ltrim(rtrim(convert(varchar(6),a.numes)))))+ltrim(rtrim(convert(varchar(6),a.numes)))
-								and d.ndopes = iif(len(e.codigos)=9,left(e.codigos,3),left(e.codigos,2)) and e.empdopnums like '%TRF PRE VENDA EMP%'
-left join sigmvcab f with(nolock) on f.empdopnums=e.empdopnums 
-left join sigcdope g with(nolock) on f.dopes=g.dopes
-left join sigmvpec h with(nolock) on f.emps=h.empsubns 
-								and right(h.codigos,6) = replicate('0',6-len(ltrim(rtrim(convert(varchar(6),f.numes)))))+ltrim(rtrim(convert(varchar(6),f.numes)))
-								and g.ndopes = iif(len(h.codigos)=9,left(h.codigos,3),left(h.codigos,2)) and h.empdopnums like  '%ENVIO MALOTE LOG>LJ%'
-left join sigmvcab i with(nolock) on i.empdopnums=h.empdopnums 
-inner join sigcdpro j with(nolock) on j.cpros=b.cpros
-LEFT JOIN SigCDCLI (NOLOCK) K ON A.contaos = K.iclis
-where a.dopes LIKE '%ENVIO PILOTO%'
-order by a.datas DESC, a.numes DESC, b.citens ASC
-
-
-
-
-
-
-
-
-
-
-select  a.emps as Loja,a.dopes as Emprestimo,a.numes as Numero,b.cpros as Produto,b.qtds as Qtds,a.datars as Data_Emp,e.empdopnums as Retorno,f.datars as Data_Retorno,
-g.cpros as produto, g.qtds as Qtds,f.datas as Data_Ret
-from sigmvcab a with(nolock)
-inner join sigmvitn b with(nolock) on a.empdopnums=b.empdopnums
-left join sigcdope d with(nolock) on a.dopes=d.dopes
-left join sigmvpec e with(nolock) on a.emps=e.emps  and
-								 right(e.codigos,6) = replicate('0',6-len(ltrim(rtrim(convert(varchar(6),a.numes)))))+ltrim(rtrim(convert(varchar(6),a.numes)))
-								and d.ndopes = iif(len(e.codigos)=9,left(e.codigos,3),left(e.codigos,2)) and e.empdopnums like '%RET. EMPRESTIMO MP%'
-left join sigmvcab f with(nolock) on f.empdopnums=e.empdopnums 
-left join sigmvitn g with(nolock) on f.empdopnums=g.empdopnums
-where a.dopes IN ('EMPRESTIMO MP', 'RET. EMPRESTIMO MP')--'EMPRESTIMO MP'
+SELECT DISTINCT
+    D.nops AS 'OP',
+    D.dataes AS 'DATA_OP',
+    A.prazoents AS 'PRAZO_PEDIDO',
+    D.codbarras AS 'FINALIZACAO',
+    NF.NUM_NF,
+    NF.DATA_NF
+FROM dbo.SigMvCab AS A WITH (NOLOCK)
+-- 1. O "outro caminho": descendo para os itens do pedido
+INNER JOIN dbo.SigMvItn AS C WITH (NOLOCK) 
+    ON A.empdopnums = C.empdopnums
+-- 2. Conectando a OP validando documento, produto e linha do item
+INNER JOIN dbo.SigOpPic AS D WITH (NOLOCK) 
+    ON A.empdopnums = D.empdopnums 
+   AND C.cpros = D.cpros 
+   AND C.citens = D.citens
+-- 3. Trazendo as NFs pelo Código de Barras (Finalização)
+LEFT JOIN (
+    SELECT DISTINCT
+        C_NF.codbarras AS FINALIZACAO,
+        A_NF.notas AS NUM_NF,
+        A_NF.datas AS DATA_NF
+    FROM SIGMVCAB A_NF (NOLOCK)
+    INNER JOIN SIGMVITN C_NF (NOLOCK) 
+        ON A_NF.empdopnums = C_NF.empdopnums
+    LEFT JOIN SigMvItn M_NF (NOLOCK) 
+        ON C_NF.codbarras = M_NF.codbarras 
+       AND C_NF.cpros = M_NF.cpros
+    WHERE A_NF.dopes IN ('NF VENDA', 'NF VENDA POF', 'NF VENDA PILOTO', 
+                         'NF VENDA GAL', 'NF RET INDUSTRIA GAL', 'NF RET INDUSTRIALIZA')
+      AND C_NF.citem2 = 0
+      AND A_NF.datas >= '2025-01-01'
+      AND M_NF.dopes = 'FINALIZA NACIONAL'
+) AS NF
+    ON NF.FINALIZACAO = D.codbarras
+WHERE (A.datas >= '2025-01-01') 
+  AND (A.dopes LIKE 'PED %' OR A.dopes LIKE 'PEDIDO %') 
+  AND (A.dopes NOT LIKE '%ACRE%') 
+  AND (A.dopes NOT LIKE '%PEDRA%')
+  AND (D.qtds > 0)
+ORDER BY 
+    D.nops DESC
