@@ -1,0 +1,20 @@
+[project]
+name = "sql-queries"
+version = "0.1.0"
+description = "Automações e scripts de dados — Orafi"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pyautogui>=0.9.54",
+    "pygetwindow>=0.0.9",
+    "pyodbc>=5.2.0",
+    "pandas>=2.2.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
+
+[tool.pytest.ini_options]
+pythonpath = "src"
