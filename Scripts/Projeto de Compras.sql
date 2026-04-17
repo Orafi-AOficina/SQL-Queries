@@ -14,6 +14,23 @@ GROUP BY A.emps, A.dopes, A.grupoos, A.contaos, C.rclis, A.grupods, A.contads, E
 
 
 
+SELECT dataincs AS 'DATA_CADASTRO', iclis AS 'COD_CONTA', rclis AS 'CONTA', razaos AS 'RAZAO_SOCIAL', cpfs AS 'CNPJ', rgs AS 'INSC_ESTADUAL', inscmuns AS 'INSC_MUNNICIPAL',
+			paises AS 'PAIS', estas AS 'ESTADO', cidas AS 'CIDADE', bairs AS 'BAIRRO', endes AS 'ENDERECO', nums AS 'NUMERO', compls AS 'COMPLEMENTO', ceps AS 'CEP',
+			contato AS 'CONTATO', ddds AS 'DDD', tel1s AS 'TEL1', tel2s AS 'TEL2', faxs AS 'TEL3', emails AS 'EMAIL',
+			CASE
+				WHEN optsimples = 'R' THEN 'LUCRO REAL'
+				WHEN optsimples = 'S' THEN 'SIMPLES NACIONAL'
+				WHEN optsimples = 'P' THEN 'LUCRO PRESUMIDO'
+				WHEN optsimples = 'A' THEN 'LUCRO ARBITRADO'
+				WHEN optsimples = 'M' THEN 'MEI'
+				WHEN optsimples = 'N' THEN 'N/D'
+			END AS 'REG_TRIBUTARIO',
+			microemps AS 'MICRO_EMREPSA',
+			estcobs AS 'ESTADO_COB', cidcobs AS 'CIDADE_COB', baicobs AS 'BAIRRO_COB', endcobs AS 'ENDERECO_COB', cepcobs AS 'CEP_COB', suframas AS 'INSC_SUFRAMA', obs AS 'OBSERVACAO', situas AS 'SITUACAO', *
+	FROM SIGCDCLI (NOLOCK)
+	WHERE grupos = 'FORNECEDOR' AND REPLACE(REPLACE(REPLACE(REPLACE(cpfs, ' ', ''), '-', ''),'.', ''),'/','') <> ''
+	ORDER BY rclis ASC
+
 
 
 
@@ -60,3 +77,49 @@ SELECT A.emps AS 'EMPRESA', A.grupos AS 'GRUPO_CONTA', A.contas AS 'COD_CONTA', 
 FROM SigCdMin (NOLOCK) A
 		LEFT JOIN SigCdPro (NOLOCK) B ON A.cpros = B.cpros
 		LEFT JOIN SigCdCLI (NOLOCK) C ON A.contas = C.iclis
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+SELECT a.emps AS 'EMPRESA', a.grupos AS 'GRP_ESTOQUE', D.grupos AS 'GRP_CONTA', D.iclis AS 'COD_CONTA', D.RCLIS AS 'NOME_CONTA',
+		b.cgrus AS 'GRUPO_INS', b.cpros AS 'COD_INSUMO',B.DPROS AS 'DESC_INSUMO', B.cproeqs AS 'COD_EQUIV', A.SQTDS AS 'SALDO', B.CUNIS AS 'UN', A.spesos AS 'QTD', B.cunips AS 'UN_QTD', B.ltminsv AS LOTE_MIN,
+		E.qmins AS 'ESTOQUE_MIN', E.qideal AS 'REPOSICAO',
+		CASE
+			WHEN B.mercs = 'PED' THEN B.cunips
+			ELSE B.cunis
+		END AS 'UN_REF',
+		CASE
+			WHEN D.inativas = 1 THEN 'INATIVA'
+			WHEN D.inativas = 0 THEN 'ATIVA'
+			ELSE 'VERIFICAR'
+		END AS 'STATUS', B.obspes
+	FROM sigmvest A (NOLOCK)
+		LEFT join sigcdpro B (NOLOCK) ON a.cpros = B.cpros
+		LEFT JOIN SIGCDPSG C (NOLOCK) ON B.CGRUS = C.CGRUS and B.sgrus = C.codigos
+		LEFT JOIN SIGCDCLI D (NOLOCK) ON A.ESTOS = D.ICLIS
+		LEFT JOIN SigCdGpr F (NOLOCK) ON B.mercs = F.codigos
+		LEFT JOIN SigCdMin E (NOLOCK) ON A.cpros = E.cpros AND A.emps = E.emps AND A.estos = E.contas AND A.grupos = E.grupos
+	WHERE (A.SQTDS <> 0 OR A.spesos <> 0)
+                                   AND (A.emps = 'RNG' OR A.emps = 'ORA') AND A.estos = 'MATPRIMA'
+	ORDER BY A.grupos, D.iclis, B.dpros, A.emps
+	
+	
+	
+	
+	
+SELECT E.emps AS 'EMPRESA', E.grupos AS 'GRP_ESTOQUE', E.contas AS 'COD_CONTA', b.cgrus AS 'GRUPO_INS', b.cpros AS 'COD_INSUMO', B.DPROS AS 'DESC_INSUMO', B.cproeqs AS 'COD_EQUIV',
+		B.ltminsv AS LOTE_MIN, E.qmins AS 'ESTOQUE_MIN', E.qideal AS 'REPOSICAO',
+		CASE
+			WHEN B.mercs = 'PED' THEN B.cunips
+			ELSE B.cunis
+		END AS 'UN_REF'
+	FROM sigcdpro B (NOLOCK)
+		LEFT JOIN SigCdMin E (NOLOCK) ON B.cpros = E.cpros
+	ORDER BY B.dpros

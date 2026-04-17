@@ -104,17 +104,13 @@ SELECT DISTINCT
     CASE
         WHEN A.dopps = 'TRABALHADOS S/ OP'                                               THEN 0
         WHEN A.dopps IN ('MUDA SETOR C ESTOQ','INDUSTRIALIZAÇÃO','FINALIZA S INDUSTRIA') THEN B.nops
-        ELSE ISNULL(C.nops, 0)
+        ELSE ISNULL(B.nops, ISNULL(C.nops, 0))
     END AS OP,
 
     CASE
-        WHEN A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(C.nops, 0) = 0 THEN 0
-        ELSE (
-            SELECT MIN(a2.qtds) FROM SigPdMvf (NOLOCK) a2
-            WHERE a2.nops = B.nops
-              AND a2.datars <= B.datars
-              AND a2.dopps IN ('DIVISAO DE OP','INDUSTRIALIZAÇÃO')
-        )
+        WHEN A.dopps = 'TRABALHADOS S/ OP' THEN 0
+        ELSE (SELECT SUM(a2.qtds) FROM SigPdMvf (NOLOCK) a2
+                WHERE a2.empdnps = A.empdnps AND (a2.nops = B.nops OR a2.nops = C.nops))
     END AS QTD_OP,
 
     CASE WHEN ISNULL(C.nops, 0) = 0 THEN '' ELSE RTRIM(B.codpds) END AS COD_PRODUTO,
@@ -160,7 +156,7 @@ SELECT DISTINCT
     -- SEQ_MOVIMENTACAO: 4 subqueries correlatas → cálculo via CTE MOV_STATS
     -- Equivalência: (cnt_up_to - cnt_at + 1) + finaliza_ajuste - finaliza_before
     CASE
-        WHEN A.dopps = 'INDUSTRIALIZAÇÃO' OR A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(C.nops, 0) = 0
+        WHEN A.dopps = 'INDUSTRIALIZAÇÃO' OR A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(B.nops, 0) = 0
             THEN 1
         ELSE
             (S.cnt_up_to_incl - S.cnt_at)   -- linhas estritamente antes
@@ -173,7 +169,7 @@ SELECT DISTINCT
 
     -- SEQ_MOVIMENTACAO_ANTERIOR: idêntico ao SEQ_MOVIMENTACAO mas sem o +1
     CASE
-        WHEN A.dopps = 'INDUSTRIALIZAÇÃO' OR A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(C.nops, 0) = 0
+        WHEN A.dopps = 'INDUSTRIALIZAÇÃO' OR A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(B.nops, 0) = 0
             THEN 0
         ELSE
             (S.cnt_up_to_incl - S.cnt_at)
@@ -183,7 +179,7 @@ SELECT DISTINCT
             - (S.finaliza_up_to_incl - S.finaliza_at)
     END AS SEQ_MOVIMENTACAO_ANTERIOR,
 
-    CASE WHEN ISNULL(C.nops, 0) = 0 THEN 0 ELSE B.cidchaves END AS [INDEX]
+    CASE WHEN ISNULL(B.nops, 0) = 0 THEN 0 ELSE B.cidchaves END AS [INDEX]
 
 FROM SigCdNec A (NOLOCK)
     LEFT JOIN ORF_ORA D

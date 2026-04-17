@@ -22,10 +22,11 @@ SELECT DISTINCT RTRIM(A.emps) AS 'EMPRESA', RTRIM(A.empdnps) AS 'CHAVE_OPERACAO'
 				--WHEN ISNULL(C.nops, 0) = 0 THEN B.nops
 				ELSE ISNULL(C.nops, 0) --C.nenvs
 			END AS 'OP',
-			CASE 
-				WHEN A.dopps = 'TRABALHADOS S/ OP' OR ISNULL(C.nops, 0) = 0 THEN 0
-				ELSE (SELECT MIN(a.qtds) FROM SigPdMvf (NOLOCK) a WHERE B.nops = a.nops AND a.datars <= B.datars AND a.dopps IN ('DIVISAO DE OP', 'INDUSTRIALIZAÇÃO'))
-			END AS 'QTD_OP',
+			CASE
+				WHEN A.dopps = 'TRABALHADOS S/ OP' THEN 0
+				ELSE (SELECT SUM(a2.qtds) FROM SigPdMvf (NOLOCK) a2
+						WHERE a2.empdnps = A.empdnps AND (a2.nops = B.nops OR a2.nops = C.nops))
+			END AS QTD_OP,
 			CASE WHEN ISNULL(C.nops, 0) = 0 THEN '' ELSE RTRIM(B.codpds) END AS 'COD_PRODUTO', --B.empdnps, C.nops, B.datars, -- D.codbarras AS 'FINALIZACAO',
 			RTRIM(A.grupoos) AS 'GRP_CONTA_ORI', RTRIM(A.contaos) AS 'COD_CONTA_ORI', RTRIM(E.rclis) AS 'NOME_CONTA_ORI',
 			RTRIM(A.grupods) AS 'GRP_CONTA_DEST', RTRIM(A.contads) AS 'COD_CONTA_DEST', RTRIM(G.rclis) AS 'NOME_CONTA_DEST',

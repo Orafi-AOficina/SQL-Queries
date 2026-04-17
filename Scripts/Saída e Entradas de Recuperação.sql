@@ -44,5 +44,5 @@ left join sigmvpec h with(nolock) on f.emps=h.empsubns
 left join sigmvcab i with(nolock) on i.empdopnums=h.empdopnums 
 inner join sigcdpro j with(nolock) on j.cpros=b.cpros
 LEFT JOIN SigCDCLI (NOLOCK) K ON A.contaos = K.iclis
-where a.datas >= '01-01-2025' AND A.dopes IN ('RECUPERAÇAO INTERNA', 'NF RET PURIFICAÇÃO C')
+where a.datas >= '01-01-2026' AND A.dopes IN ('NF REFINO', 'NF PURIFICACAO')
 order by a.datas DESC, a.numes DESC, b.citens ASC
