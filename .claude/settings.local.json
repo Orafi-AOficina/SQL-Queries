@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/rafael/**)"
+      "Read(//c/Users/rafael/**)",
+      "Bash('C:/Program Files/SqlCmd/sqlcmd.exe' -S 10.10.0.5 -U svc_reader -P SVC-READER1234 -d DB_ORF -Q ' *)"
     ]
   }
 }

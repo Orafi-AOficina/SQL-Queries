@@ -18,7 +18,7 @@ hierarquia AS (
 ),
 
 resumo_op AS (
-    SELECT 
+    SELECT
         CASE
             WHEN D.nopmaes = 0                         THEN D.nops
             WHEN P1.nopmaes = 0                        THEN P1.nops
@@ -26,18 +26,20 @@ resumo_op AS (
             WHEN COALESCE(P3.nopmaes, 0) = 0           THEN P3.nops
             ELSE P3.nopmaes
         END AS OP_ORIGINAL,
-        SUM(D.qtds_total) AS qtd_pend_total, D.dopes
+        SUM(CASE WHEN E.nops IS NOT NULL THEN D.qtds_total ELSE 0 END) AS qtd_pend_total,
+        SUM(D.qtds_total) AS qtd_total,
+        D.dopes
     FROM hierarquia D
-        INNER JOIN ops_pendentes E 
-            ON D.nops = E.nops 
-        LEFT JOIN hierarquia P1 
+        LEFT JOIN ops_pendentes E
+            ON D.nops = E.nops
+        LEFT JOIN hierarquia P1
             ON D.nopmaes > 0 AND P1.nops = D.nopmaes AND D.dopes = P1.dopes
-        LEFT JOIN hierarquia P2 
+        LEFT JOIN hierarquia P2
             ON P1.nopmaes > 0 AND P2.nops = P1.nopmaes and P1.dopes = P2.dopes
         LEFT JOIN hierarquia P3
             ON P2.nopmaes > 0 AND P3.nops = P2.nopmaes and P2.dopes = P3.dopes
     WHERE D.qtds_total <> 0
-    GROUP BY 
+    GROUP BY
         CASE
             WHEN D.nopmaes = 0                         THEN D.nops
             WHEN P1.nopmaes = 0                        THEN P1.nops
@@ -45,6 +47,7 @@ resumo_op AS (
             WHEN COALESCE(P3.nopmaes, 0) = 0           THEN P3.nops
             ELSE P3.nopmaes
         END , D.dopes
+    HAVING SUM(CASE WHEN E.nops IS NOT NULL THEN D.qtds_total ELSE 0 END) > 0
 )
 
 SELECT 
@@ -70,10 +73,10 @@ SELECT
     I.cpros                               AS COD_COMP,
     I.dpros                               AS DESC_COMP,
     SUM(H.qtds)							  AS PESOS_TOTAL,
-    SUM(H.qtds * R.qtd_pend_total / C.qtds)   AS PESOS_PROD,
+    SUM(H.qtds * R.qtd_pend_total / NULLIF(R.qtd_total, 0))  AS PESOS_PROD,
     I.cunis                               AS UN1,
     SUM(H.pesos)						  AS QTD_TOTAL,
-    SUM(H.pesos * R.qtd_pend_total / C.qtds)  AS QTD_PROD,
+    SUM(H.pesos * R.qtd_pend_total / NULLIF(R.qtd_total, 0)) AS QTD_PROD,
     I.cunips                              AS UN2,
     CASE
 	    WHEN I.fabrproprs = 1 THEN 'VERDADEIRO'
@@ -125,7 +128,7 @@ WHERE A.dopes IN ('PEDIDO FABRICA','PEDIDO ENCOMENDA','PED FABRICA POF',
 GROUP BY 
     A.emps, A.datas, B.rclis, A.dopes, R.OP_ORIGINAL,
     G.reffs, C.cpros, G.dpros, G.codcors, A.prazoents,
-    R.qtd_pend_total,
+    R.qtd_pend_total, R.qtd_total,
     K.cgrus, K.dgrus, J.codigos, J.descricaos,
     I.cpros, I.dpros, I.cunis, I.cunips, I.fabrproprs,
     L.descs, K.mercs, G.cproeqs, I.obspes,
